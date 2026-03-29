@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI English — Учи английский с ИИ</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;800&family=Geologica:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ff;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --border: #e4e0fa;
+    --accent: #7c6ff7;
+    --accent2: #f472b6;
+    --accent3: #10b981;
+    --text: #1e1b4b;
+    --muted: #7c6fa8;
+    --chatgpt: #059669;
+    --gemini: #2563eb;
+    --claude: #d97706;
+    --gigachat: #7c3aed;
+    --alisa: #e3290f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geologica', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(124,111,247,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,111,247,.07) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+  .bg-glow {
+    position: fixed; z-index: 0; pointer-events: none;
+    border-radius: 50%; filter: blur(140px); opacity: .18;
+  }
+  .bg-glow-1 { width: 600px; height: 600px; background: #a78bfa; top: -250px; left: -200px; }
+  .bg-glow-2 { width: 500px; height: 500px; background: #f9a8d4; bottom: -150px; right: -150px; }
+
+  /* ── LAYOUT ── */
+  #app { position: relative; z-index: 1; }
+
+  /* ── VIEWS ── */
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: block; }
+
+  /* ────────── HOME ────────── */
+  #home {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    text-align: center;
+  }
+  #home.active { display: flex; }
+
+  .home-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,111,247,.12); border: 1px solid rgba(124,111,247,.35);
+    border-radius: 100px; padding: 6px 16px; font-size: 12px;
+    color: var(--accent); letter-spacing: .12em; text-transform: uppercase;
+    margin-bottom: 32px;
+    animation: fadeUp .6s ease both;
+  }
+  .home-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+
+  .home-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(36px, 7vw, 80px);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 20px;
+    animation: fadeUp .7s .1s ease both;
+  }
+  .home-title .grad {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .home-sub {
+    font-size: clamp(15px, 2vw, 18px); color: var(--muted);
+    max-width: 560px; line-height: 1.7;
+    margin-bottom: 56px;
+    animation: fadeUp .7s .2s ease both;
+  }
+
+  .ai-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; width: 100%; max-width: 900px;
+    animation: fadeUp .7s .3s ease both;
+  }
+
+  .ai-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 20px;
+    cursor: pointer;
+    transition: all .3s cubic-bezier(.23,1,.32,1);
+    position: relative; overflow: hidden;
+    box-shadow: 0 2px 12px rgba(124,111,247,.06);
+  }
+  .ai-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--ai-color); opacity: 0;
+    transition: opacity .3s;
+  }
+  .ai-card:hover { transform: translateY(-6px); border-color: var(--ai-color); box-shadow: 0 16px 40px rgba(124,111,247,.14); }
+  .ai-card:hover::before { opacity: .05; }
+
+  .ai-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin-bottom: 16px;
+    background: rgba(124,111,247,.08);
+    border: 1px solid rgba(124,111,247,.15);
+  }
+  .ai-name { font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--text); }
+  .ai-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .ai-arrow {
+    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+    font-size: 20px; color: var(--muted); opacity: 0; transition: all .3s;
+  }
+  .ai-card:hover .ai-arrow { opacity: 1; transform: translateY(-50%) translateX(4px); }
+
+  /* ────────── AI PAGE ────────── */
+  #ai-page { display: none; padding: 0; }
+  #ai-page.active { display: block; }
+
+  .page-header {
+    padding: 32px 40px 0;
+    display: flex; align-items: center; gap: 16px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .back-btn {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 10px 16px;
+    cursor: pointer; color: var(--muted); font-family: 'Geologica', sans-serif;
+    font-size: 13px; transition: all .2s; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 1px 6px rgba(124,111,247,.07);
+  }
+  .back-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(124,111,247,.04); }
+
+  .ai-hero {
+    max-width: 1100px; margin: 0 auto;
+    padding: 48px 40px 40px;
+    display: flex; align-items: center; gap: 24px;
+    background: linear-gradient(135deg, rgba(124,111,247,.05), rgba(244,114,182,.03));
+    border-radius: 0 0 24px 24px;
+    margin-bottom: 8px;
+  }
+  .ai-hero-icon {
+    width: 72px; height: 72px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; flex-shrink: 0;
+    border: 1.5px solid rgba(124,111,247,.2);
+    box-shadow: 0 4px 16px rgba(124,111,247,.1);
+  }
+  .ai-hero h1 {
+    font-family: 'Unbounded', sans-serif; font-weight: 700;
+    font-size: clamp(24px, 4vw, 40px); color: var(--text);
+  }
+  .ai-hero p { color: var(--muted); line-height: 1.7; margin-top: 8px; font-size: 15px; max-width: 640px; }
+
+  .skill-bar {
+    max-width: 1100px; margin: 0 auto;
+    padding: 0 40px 32px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .skill-btn {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 100px; padding: 10px 22px;
+    cursor: pointer; color: var(--muted); font-family: 'Geologica', sans-serif;
+    font-size: 13px; font-weight: 500;
+    transition: all .25s; letter-spacing: .02em;
+    box-shadow: 0 1px 4px rgba(124,111,247,.06);
+  }
+  .skill-btn:hover, .skill-btn.active {
+    color: var(--text); border-color: var(--ai-color);
+    background: rgba(124,111,247,.05);
+  }
+  .skill-btn.active { color: var(--accent); font-weight: 600; }
+
+  .divider { height: 1px; background: var(--border); max-width: 1100px; margin: 0 auto 40px; }
+
+  /* ────────── PROMPTS ────────── */
+  .prompts-section {
+    max-width: 1100px; margin: 0 auto;
+    padding: 0 40px 80px;
+  }
+  .prompts-section h2 {
+    font-family: 'Unbounded', sans-serif; font-size: 20px; font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .prompts-meta { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+
+  .prompts-grid {
+    display: grid; gap: 16px;
+  }
+
+  .prompt-card {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 18px; padding: 24px;
+    transition: all .25s; position: relative; overflow: hidden;
+    box-shadow: 0 2px 10px rgba(124,111,247,.06);
+  }
+  .prompt-card::after {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--ai-color); opacity: 0; transition: opacity .25s;
+  }
+  .prompt-card:hover { border-color: rgba(124,111,247,.3); transform: translateX(4px); box-shadow: 0 6px 24px rgba(124,111,247,.1); }
+  .prompt-card:hover::after { opacity: 1; }
+
+  .prompt-num {
+    font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 600;
+    color: var(--ai-color); letter-spacing: .1em; margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .prompt-goal {
+    font-size: 13.5px; color: var(--text); margin-bottom: 8px; font-weight: 500;
+  }
+  .prompt-description {
+    font-size: 12.5px; color: var(--muted); margin-bottom: 16px; line-height: 1.6;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(124,111,247,.06), rgba(244,114,182,.04));
+    border-radius: 10px;
+    border-left: 3px solid rgba(124,111,247,.2);
+  }
+  .prompt-description .skills-badges {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .skill-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(124,111,247,.1); border: 1px solid rgba(124,111,247,.2);
+    border-radius: 100px; padding: 3px 10px; font-size: 11px;
+    color: var(--accent); font-weight: 500;
+  }
+  .prompt-text {
+    background: linear-gradient(135deg, #f8f7ff, #fdf4ff);
+    border: 1.5px solid rgba(124,111,247,.15);
+    border-radius: 12px; padding: 14px 16px;
+    font-size: 13.5px; line-height: 1.7; color: var(--text);
+    font-family: 'Geologica', sans-serif; letter-spacing: .01em;
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute; right: 10px; top: 10px;
+    background: rgba(124,111,247,.08); border: 1.5px solid rgba(124,111,247,.2);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--muted);
+    font-size: 11px; font-family: 'Geologica', sans-serif;
+    transition: all .2s; opacity: 0;
+  }
+  .prompt-text:hover .copy-btn { opacity: 1; }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(124,111,247,.12); }
+  .copy-btn.copied { color: var(--accent3); border-color: var(--accent3); background: rgba(16,185,129,.08); }
+
+  /* ────────── ANIMATIONS ────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: .3; }
+  }
+
+  .fade-in { animation: fadeUp .4s ease both; }
+
+  /* ────────── RESPONSIVE ────────── */
+  @media (max-width: 600px) {
+    .page-header, .ai-hero, .skill-bar, .prompts-section { padding-left: 20px; padding-right: 20px; }
+    .ai-hero { flex-direction: column; align-items: flex-start; }
+    .prompt-text { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div id="app">
+
+  <!-- ══ HOME ══ -->
+  <div id="home" class="view active">
+    <div class="home-badge"><span></span> Промпты для изучения языков</div>
+    <h1 class="home-title">Учи английский<br>с <span class="grad">искусственным</span><br>интеллектом</h1>
+    <p class="home-sub">Готовые промпты для разных ИИ-ассистентов — по всем навыкам: говорение, письмо, чтение, аудирование, грамматика и лексика.</p>
+    <div class="ai-grid">
+      <div class="ai-card" style="--ai-color:var(--chatgpt)" onclick="openAI('chatgpt')">
+        <div class="ai-icon">🤖</div>
+        <div class="ai-name">ChatGPT</div>
+        <div class="ai-hint">OpenAI · Лучший для диалогов</div>
+        <div class="ai-arrow">→</div>
+      </div>
+      <div class="ai-card" style="--ai-color:var(--gemini)" onclick="openAI('gemini')">
+        <div class="ai-icon">✨</div>
+        <div class="ai-name">Gemini</div>
+        <div class="ai-hint">Google · Актуальные тексты</div>
+        <div class="ai-arrow">→</div>
+      </div>
+      <div class="ai-card" style="--ai-color:var(--claude)" onclick="openAI('claude')">
+        <div class="ai-icon">🧠</div>
+        <div class="ai-name">Claude AI</div>
+        <div class="ai-hint">Anthropic · Точный анализ</div>
+        <div class="ai-arrow">→</div>
+      </div>
+      <div class="ai-card" style="--ai-color:var(--gigachat)" onclick="openAI('gigachat')">
+        <div class="ai-icon">🇷🇺</div>
+        <div class="ai-name">GigaChat</div>
+        <div class="ai-hint">Сбер · Русский контекст</div>
+        <div class="ai-arrow">→</div>
+      </div>
+      <div class="ai-card" style="--ai-color:var(--alisa)" onclick="openAI('alisa')">
+        <div class="ai-icon">🔴</div>
+        <div class="ai-name">Алиса</div>
+        <div class="ai-hint">Яндекс · ОГЭ/ЕГЭ формат</div>
+        <div class="ai-arrow">→</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ AI PAGE ══ -->
+  <div id="ai-page" class="view">
+    <div class="page-header">
+      <button class="back-btn" onclick="goHome()">← Назад</button>
+    </div>
+    <div class="ai-hero">
+      <div class="ai-hero-icon" id="hero-icon"></div>
+      <div>
+        <h1 id="hero-name"></h1>
+        <p id="hero-desc"></p>
+      </div>
+    </div>
+    <div class="skill-bar" id="skill-bar"></div>
+    <div class="divider" style="margin-left:40px;margin-right:40px;max-width:calc(1100px - 80px);"></div>
+    <div class="prompts-section" id="prompts-section"></div>
+  </div>
+
+</div>
+
+<script>
+const DATA = {
+  chatgpt: {
+    name: 'ChatGPT (OpenAI)',
+    icon: '🤖',
+    color: '#10a37f',
+    desc: 'ChatGPT хорошо понимает многоходовые диалоги и может удерживать контекст урока на протяжении всей сессии. Рекомендуется использовать системный промпт для задания роли преподавателя.',
+    skills: {
+      'Speaking': [
+        { goal: 'Развитие разговорных навыков, исправление грамматических ошибок в контексте', text: 'Act as a patient English teacher for a B1 student. Start a 5-minute conversation about my weekend plans. Correct my grammar gently after each of my replies without interrupting the flow.' },
+        { goal: 'Практика бытовой лексики, ролевая игра', text: 'Let\'s do a roleplay: you are a shop assistant, I am a tourist in London who wants to buy a gift. Speak slowly and use simple vocabulary. After the roleplay, give me 3 tips to improve my speech.' },
+        { goal: 'Подготовка к деловому общению и собеседованиям', text: 'Interview me for a job position as a junior designer. Ask 5 questions one by one, wait for my answers, then give detailed feedback on my fluency, vocabulary range and confidence.' },
+        { goal: 'Тренировка описания изображений (формат ОГЭ/ЕГЭ)', text: 'I\'ll describe a picture to you. Listen and ask 2 clarifying questions after my description, then tell me what I did well and what vocabulary I could add.' },
+        { goal: 'Развитие аргументированной речи и критического мышления', text: 'Let\'s debate: you argue that social media is harmful for teenagers, I\'ll argue the opposite. Keep the debate going for 10 exchanges, then summarise both positions.' },
+        { goal: 'Спонтанная речь, расширение словарного запаса', text: 'Give me a random topic (travel, technology, food, etc.) and let me speak about it for 2 minutes. Then rate my speech on a scale of 1–10 and suggest 5 new words I could have used.' },
+      ],
+      'Writing': [
+        { goal: 'Освоение жанра официального письма', text: 'I\'m a Russian student aged 15. Help me write a formal letter of complaint to a hotel manager about a noisy room. First give me an outline, then write the letter together with me step by step.' },
+        { goal: 'Диагностика и коррекция письменных ошибок', text: 'Check my essay for grammar, punctuation and coherence. After corrections, explain each mistake using simple terms. Here is my text: [вставить текст ученика]' },
+        { goal: 'Развитие творческого письма', text: 'Give me a creative writing prompt suitable for a 14-year-old. After I write my story (around 150 words), evaluate it using 4 criteria: vocabulary, grammar, creativity, and structure.' },
+        { goal: 'Структурированное письмо, метод PEEL', text: 'Teach me how to write a strong paragraph using the PEEL method (Point, Evidence, Explanation, Link). Give me an example paragraph about climate change, then ask me to write one about technology.' },
+        { goal: 'Подготовка к экзаменационному эссе', text: 'I need to write an opinion essay about online learning for my school exam. Help me brainstorm 3 arguments for and 3 against, then draft an introduction together.' },
+        { goal: 'Развитие стилистического чутья', text: 'Rewrite the following sentence in 3 different styles: formal, informal, and academic. Then explain what changed and why: \'I think online classes are better than real school.\'' },
+      ],
+      'Reading': [
+        { goal: 'Проверка понимания прочитанного', text: 'Give me a short article (150–200 words) about space exploration at B1 level. After I read it, ask me 5 comprehension questions and explain any words I find difficult.' },
+        { goal: 'Работа с незнакомой лексикой в контексте', text: 'Find 10 unknown words in the following text and explain them using context clues, not just a dictionary definition. Then make a mini-quiz with those words: [вставить текст]' },
+        { goal: 'Стратегии предчтения, критическое мышление', text: 'Read this news headline with me: \'Scientists Discover New Species in Amazon\'. Now ask me prediction questions before I read the full article, then check if my predictions were correct.' },
+        { goal: 'Работа с основной идеей и деталями текста', text: 'Give me a text about British traditions. After reading, ask me to identify the main idea, 3 supporting details, and the author\'s attitude. Help me if I struggle.' },
+        { goal: 'Тренировка заданий типа True/False/Not Given', text: 'Give me a dialogue between two friends discussing a movie. Then ask me: who said what, what the movie was about, and how each character felt. Use True/False/Not Given format.' },
+        { goal: 'Связь чтения и произношения', text: 'I will read a paragraph aloud (I\'ll type it). Point out any mispronunciations based on the words I type wrong and suggest phonetic practice for those sounds.' },
+      ],
+      'Listening': [
+        { goal: 'Симуляция аудирования через текст', text: 'Pretend you\'re reading a short weather forecast aloud. Type it out slowly as if speaking, with pauses marked by \'...\'. Then quiz me on key details.' },
+        { goal: 'Тренировка диктанта и орфографии', text: 'Give me a dictation at A2–B1 level about daily routines (5–6 sentences). Read each sentence twice (type it twice), then show the full text so I can check my work.' },
+        { goal: 'Практика понимания диалога', text: 'Simulate a phone conversation between a student and a librarian. Type both parts clearly. Afterwards, ask me comprehension and inference questions.' },
+        { goal: 'Подготовка к экзаменационному аудированию', text: 'Give me a short radio announcement about an event (e.g. a school fair). Then ask me 4 multiple-choice questions. Explain why the wrong answers are incorrect.' },
+        { goal: 'Пересказ, понимание нарратива', text: 'Tell me a short funny story in simple English. After the story, ask me to retell it in my own words. Then compare my version with yours and note differences.' },
+        { goal: 'Пошаговое аудирование, стратегия chunking', text: 'Give me a podcast-style introduction about a famous scientist (2–3 sentences). Pause and ask me what I understood, then continue with the next part.' },
+      ],
+      'Grammar': [
+        { goal: 'Освоение видовременных форм через игровой контекст', text: 'Explain the difference between Present Simple and Present Continuous to a 13-year-old. Use 3 funny examples, then give me a 5-question quiz and check my answers.' },
+        { goal: 'Целенаправленная работа над артиклями', text: 'I keep making mistakes with articles (a/an/the). Give me 10 sentences with gaps and explain the rule for each answer after I complete them.' },
+        { goal: 'Условные предложения в контексте', text: 'Teach me Conditional sentences (0, 1, 2, 3) using real-life examples about school life. After each type, give me 2 sentences to complete myself.' },
+        { goal: 'Грамматический анализ студенческих текстов', text: 'Find and correct all grammar mistakes in my text. For each mistake, write the rule in one clear sentence. Text: [вставить текст ученика]' },
+        { goal: 'Геймификация грамматических упражнений', text: 'Create a grammar escape room: give me 5 grammar challenges (fill in the blank, error correction, sentence transformation). Unlock the next challenge only when I answer correctly.' },
+        { goal: 'Практика пассивного залога в тематическом контексте', text: 'Let\'s practise Passive Voice. Give me 6 active sentences about inventions. I\'ll transform them into passive, you check and explain any errors.' },
+      ],
+      'Vocabulary': [
+        { goal: 'Изучение фразовых глаголов с мнемотехниками', text: 'Teach me 8 phrasal verbs related to daily routines (get up, carry on, etc.). For each one: give a definition, an example, and a memory tip. Then quiz me.' },
+        { goal: 'Тематическое освоение лексики', text: 'I want to learn vocabulary related to the environment. Give me 10 words in a table with: word, definition, example sentence, and collocations.' },
+        { goal: 'Активизация пассивного словарного запаса', text: 'Play word association with me: you say a word, I say the first related word that comes to mind, and we go back and forth for 20 rounds. Then analyse patterns in my vocabulary.' },
+        { goal: 'Идиомы через образный контекст', text: 'Give me 5 English idioms about time. Explain each one with an origin story or funny image. Then ask me to use each idiom in an original sentence.' },
+        { goal: 'Систематизация лексики по теме', text: 'Create a vocabulary map for the topic \'City Life\': give me 20 words organised into categories (transport, buildings, problems, activities). Then make a gap-fill exercise.' },
+        { goal: 'Описание предметов, расширение лексики', text: 'I\'ll describe an object without naming it. You guess what it is and then teach me 5 related words I didn\'t use in my description.' },
+      ],
+    }
+  },
+  gemini: {
+    name: 'Gemini (Google)',
+    icon: '✨',
+    color: '#4285f4',
+    desc: 'Gemini хорошо справляется с поиском актуальной информации и генерацией адаптированных учебных материалов. Особенно эффективен для работы с текстами на основе реальных событий и интеграции с Google-сервисами.',
+    skills: {
+      'Speaking': [
+        { goal: 'Развитие спонтанной диалогической речи', text: 'You are my English conversation partner. I\'m a 16-year-old Russian student at B1 level. Let\'s discuss what makes a good friend. Ask me questions, respond to my answers naturally, and note 3 phrases I could improve at the end.' },
+        { goal: 'Лексика описания мест, туристическая тематика', text: 'Roleplay: you are a tour guide in Edinburgh, I am a tourist. Guide me through 3 key sights, answer my questions, and use at least 10 descriptive adjectives. Then list the adjectives you used.' },
+        { goal: 'Неподготовленный монолог, речевые клише', text: 'Ask me to tell you about my favourite film in 1 minute. After I finish, ask 3 follow-up questions and suggest 4 phrases to make my speech sound more natural.' },
+        { goal: 'Дискуссия, речевые формулы согласия/несогласия', text: 'Let\'s practise agreeing and disagreeing politely. Give me a controversial statement (e.g. \'Homework should be banned\'). I\'ll respond, you respond back, keep the discussion going for 8 exchanges.' },
+        { goal: 'Тематическая лексика (здоровье), ролевые игры', text: 'Simulate a doctor-patient conversation. You are the doctor, I am the patient with a cold. Use simple medical vocabulary. After the roleplay, give me a list of 10 health-related phrases we used.' },
+        { goal: 'Рефлексивный диалог, развитие критического мышления', text: 'I\'ll tell you about a problem I have (school stress, for example). You ask me questions using the Socratic method to help me think of solutions. Speak naturally, like a school counsellor.' },
+      ],
+      'Writing': [
+        { goal: 'Жанр блог-поста, структурированное письмо', text: 'Help me write a blog post (180–200 words) about why reading books is important, aimed at teenagers. First, suggest a catchy title and 3-point outline. Then write the post together with me.' },
+        { goal: 'Неформальная переписка, письмо другу', text: 'I need to write a message to my English pen pal describing my school. Give me 5 useful phrases for informal letters, then help me write a 100-word message using them.' },
+        { goal: 'Анализ и коррекция студенческих текстов', text: 'Correct my paragraph and explain your changes. Use a table format: Original | Corrected | Reason. Paragraph: [вставить текст ученика]' },
+        { goal: 'Парафраз, академическое письмо', text: 'Teach me how to paraphrase sentences without changing the meaning. Give me 5 original sentences about technology and show me 2 paraphrase options for each one.' },
+        { goal: 'Развитие творческого письма, структура рассказа', text: 'I want to write a short story about a robot who becomes friends with a child. Help me develop: character, setting, conflict, and resolution. Then write the first paragraph together.' },
+        { goal: 'Подготовка к написанию рецензии (формат ОГЭ/ЕГЭ)', text: 'Write a model answer for this exam task: \'Write a review of a book you have read recently (140–180 words).\' Then list 5 phrases from the model I should memorise.' },
+      ],
+      'Reading': [
+        { goal: 'Работа с аутентичными текстами, лексика из контекста', text: 'Find me a real news article about climate change at B1 reading level. Summarise it in 5 bullet points, then give me 3 comprehension questions and 5 new vocabulary items from the text.' },
+        { goal: 'Чтение биографий, временная последовательность', text: 'Give me a short biography of Marie Curie (150 words) at A2–B1 level. After reading, ask me to arrange 5 events in chronological order, then check my answers.' },
+        { goal: 'Анализ структуры абзаца', text: 'I\'ll give you a paragraph. Identify the main idea, supporting sentences, and the conclusion. Explain why each sentence belongs to its category. Paragraph: [вставить текст]' },
+        { goal: 'Стратегии работы с множественным выбором', text: 'Give me a reading text about British culture with 5 multiple-choice questions. Highlight which part of the text contains each answer and explain distractors.' },
+        { goal: 'Анализ поэтического текста, развитие культурной грамотности', text: 'Give me a poem by a famous English poet at an accessible level. Help me understand the meaning, imagery, and mood. Then ask me 3 interpretive questions.' },
+        { goal: 'Тренировка техники skim-reading', text: 'Skim-reading challenge: give me a 200-word text. I have 60 seconds to read it (I\'ll tell you when I\'m done). Then ask me 3 gist questions to test my overall understanding.' },
+      ],
+      'Listening': [
+        { goal: 'Пошаговое восприятие информации', text: 'Type a short news bulletin about a recent sporting event in simple English. Pause after every 2 sentences and ask me a question about what you just said. End with a 5-question quiz.' },
+        { goal: 'Интерактивное аудирование, биографическая лексика', text: 'Simulate a radio interview with a famous inventor. Type both the host and guest parts clearly. After each answer, ask me 1 comprehension question before continuing.' },
+        { goal: 'Конспектирование основных идей', text: 'Give me a short speech by a school principal about new rules (5–6 sentences). After reading it, ask me to fill in a gap-fill summary of the speech.' },
+        { goal: 'Ситуативный диалог, лексика путешествий', text: 'Simulate a lost-and-found conversation at an airport. I am the passenger, you are the staff. Type your lines slowly and clearly. After the conversation, list 8 key phrases we used.' },
+        { goal: 'Активное слушание, предсказание содержания', text: 'Tell me a short story sentence by sentence. After each sentence, I predict what happens next. At the end, compare my predictions to the actual story.' },
+        { goal: 'Аудирование через лирику', text: 'Give me a 4-line song verse with a simple rhyme scheme about daily life. Type it once fast, once slow. Ask me to write what I heard each time and compare versions.' },
+      ],
+      'Grammar': [
+        { goal: 'Будущее время, сравнительный анализ форм', text: 'Explain Future tenses (will, going to, Present Continuous for future) with a real-life example for each. Then give me 6 sentences to complete with the correct form.' },
+        { goal: 'Косвенная речь, трансформационные упражнения', text: 'Teach me reported speech step by step. Start with direct speech, show the transformation rules, then give me 5 sentences to transform myself. Check and explain my answers.' },
+        { goal: 'Диагностика грамматических пробелов', text: 'Create a grammar diagnostic test for B1 level: 10 questions covering articles, tenses, prepositions, and conditionals. After I answer, give me a score and a study plan based on my mistakes.' },
+        { goal: 'Придаточные определительные предложения', text: 'Let\'s practice relative clauses using pictures. Describe an imaginary scene to me, I\'ll write 3 sentences using who, which, and where. Correct my usage and add 2 more examples.' },
+        { goal: 'Поиск и исправление грамматических ошибок', text: 'Give me a text with 10 deliberate grammar mistakes (mixed). I\'ll find and fix them. Then compare my corrections with yours and explain any I missed.' },
+        { goal: 'Предлоги времени и места в контексте', text: 'Quiz me on prepositions of time and place using 8 fill-in-the-blank sentences about school life. After the quiz, group the prepositions I struggled with into a revision table.' },
+      ],
+      'Vocabulary': [
+        { goal: 'Лексика технологий с мнемотехниками', text: 'I want to learn 10 words related to technology (gadgets, internet, AI). For each word, give me: definition, example sentence, a common collocation, and a memory tip using a Russian connection.' },
+        { goal: 'Активизация лексики через игру', text: 'Let\'s play Taboo: you describe a word without using it or 3 related words. I\'ll guess. Do 8 rounds, then ask me to use each word in a sentence.' },
+        { goal: 'Синонимы глаголов речи, нарративный стиль', text: 'Give me 6 synonyms for the word \'said\' used in storytelling (whispered, shouted, muttered...). Give a context where each one fits best. Then I write a short 80-word story using all 6.' },
+        { goal: 'Устойчивые выражения с «time»', text: 'Teach me 8 expressions with the word \'time\' (take your time, kill time, etc.). Give a definition and a dialogue snippet for each. Then make a matching quiz.' },
+        { goal: 'Описательная лексика, обогащение словарного запаса', text: 'I\'ll describe my bedroom to you. After my description, give me 10 more specific vocabulary items I could use to make the description richer and more vivid.' },
+        { goal: 'Эмоциональная лексика, градация интенсивности', text: 'Create a word web for the topic \'emotions\'. Give me 15 emotion words organised from mild to intense (e.g. sad → upset → devastated). Use each in an example sentence.' },
+      ],
+    }
+  },
+  claude: {
+    name: 'Claude AI (Anthropic)',
+    icon: '🧠',
+    color: '#d97706',
+    desc: 'Claude отличается особой точностью в объяснении грамматических правил и развёрнутой обратной связью. Эффективен для аналитической работы с текстами и письменных заданий повышенной сложности.',
+    skills: {
+      'Speaking': [
+        { goal: 'Коррекционный диалог, накопление речевых клише', text: 'I\'m a Russian student at B1 level. Play the role of a friendly English teacher. Let\'s have a conversation about hobbies for 10 minutes. After each of my turns, gently correct 1 mistake and add 1 useful expression.' },
+        { goal: 'Оценка монологического высказывания по критериям', text: 'Give me a controversial topic suitable for a teenager. I\'ll present my opinion for 60 seconds (I\'ll type it). Then give me structured feedback: fluency, vocabulary range, argument strength, grammar.' },
+        { goal: 'Кооперативное повествование, развитие связности речи', text: 'Let\'s do a storytelling chain: you start a story with 2 sentences, I continue with 2, and we alternate for 10 turns. At the end, give me feedback on my vocabulary and sentence variety.' },
+        { goal: 'Дискурсивные маркеры в устной речи', text: 'Teach me 5 discourse markers (firstly, however, in addition...) by using them in a model speech about environmental problems. Then ask me to give a mini-speech using at least 3 of them.' },
+        { goal: 'Формальная речь, ситуационная коммуникация', text: 'Simulate a phone call with a customer service representative. I want to complain about a broken headphone order. Stay in character, be slightly unhelpful (realistic), and see how I manage the situation.' },
+        { goal: 'Описание диаграмм, язык статистики', text: 'Ask me to describe a graph or chart you invent (e.g. students\' favourite school subjects). I\'ll describe it verbally (type my response). Feedback on language for describing trends and data.' },
+      ],
+      'Writing': [
+        { goal: 'Деловая переписка, работа с регистром', text: 'I need to write a formal email to my teacher asking for an extension on a project. Help me draft it in 3 stages: planning, drafting, editing. Point out register issues at each stage.' },
+        { goal: 'Многокритериальная оценка письменной работы', text: 'Analyse my text and give me a detailed report under 4 headings: Grammar, Vocabulary, Coherence, and Task Achievement. Use a 5-point scale for each. Text: [вставить текст ученика]' },
+        { goal: 'Аргументативное эссе, структура академического текста', text: 'Help me write an argumentative essay (200 words) about whether schools should ban smartphones. Teach me the structure first (hook, thesis, arguments, counterargument, conclusion), then we write together.' },
+        { goal: 'Улучшение лексики письменных работ', text: 'Give me 5 sentences with weak word choices (e.g. \'good\', \'nice\', \'bad\'). Show me 3 stronger alternatives for each weak word and explain the connotation differences.' },
+        { goal: 'Структурированное письмо, анализ абзаца', text: 'I\'ll write a topic sentence. You complete the paragraph using PEEL structure, then ask me to write one myself on a different topic and provide detailed feedback.' },
+        { goal: 'Связность текста, переходные слова', text: 'Teach me transition words by category (addition, contrast, cause-effect, conclusion). Give me a sample paragraph using each category. Then give me a jumbled paragraph to reorder using transitions.' },
+      ],
+      'Reading': [
+        { goal: 'Синтаксический анализ сложных предложений', text: 'Give me a complex sentence from an academic text. Break it down for me: identify the main clause, subordinate clauses, and all connectors. Then give me 3 more to analyse myself.' },
+        { goal: 'Критическое чтение, анализ аргументации', text: 'Provide a 200-word argumentative text. After I read it, help me identify: the author\'s claim, the evidence, the assumptions, and any logical fallacies.' },
+        { goal: 'Стратегия определения значений из контекста', text: 'Give me a text with 8 vocabulary items highlighted. Without a dictionary, I\'ll guess meanings from context. Score my guesses and explain the correct meanings after.' },
+        { goal: 'Интерпретация текста, творческий отклик на чтение', text: 'Give me a short story with a twist ending. After reading, ask me: What clues pointed to the ending? What would you change? Write an alternative ending in 50 words.' },
+        { goal: 'Сравнительный анализ текстов', text: 'Present me with two short opinion texts on the same topic (e.g. social media). Ask me to compare the authors\' views, tone, and evidence. Help me write a 100-word comparison paragraph.' },
+        { goal: 'Работа с инструкционным текстом', text: 'Give me a recipe in English (simple dish). After I read it, ask me to list the steps in order, identify all imperative verbs, and guess the meaning of 3 cooking terms.' },
+      ],
+      'Listening': [
+        { goal: 'Конспектирование монолога', text: 'Type out a monologue from a student giving a presentation about their city. Pause every 2 sentences and ask me to note the key point. At the end, help me write a 5-line summary.' },
+        { goal: 'Анализ аргументов в дискуссии', text: 'Simulate a debate between two students: one is for online schooling, one is against. Type each person\'s argument clearly labelled. After the debate, ask me who made stronger points and why.' },
+        { goal: 'Работа с неоднозначной информацией', text: 'Give me a short announcement about changes to a school schedule. Include 3 deliberate ambiguities. Ask me what I understood clearly and what was unclear, then explain the ambiguous parts.' },
+        { goal: 'Конспектирование лекции, пересказ', text: 'Type a factual mini-lecture about the water cycle (6–8 sentences). After each sentence, I write a key word or phrase. At the end, I rebuild the full explanation from my notes.' },
+        { goal: 'Аудирование инструкций, пространственное ориентирование', text: 'Give me a 5-line dialogue where someone gives directions to a museum. Type it twice: once fast, once slow. Ask me to draw a simple route map based on what I understood.' },
+        { goal: 'Анализ риторических приёмов, критическое аудирование', text: 'Simulate a short TED Talk opening (3–4 sentences) about creativity. Ask me: What is the speaker\'s main point? What technique did they use to hook the audience? How would I rate the opening?' },
+      ],
+      'Grammar': [
+        { goal: 'Сравнение схожих грамматических конструкций', text: 'Explain the difference between \'used to\', \'would\' and \'be used to\' with 2 examples each. Then give me 6 sentences to choose the correct form, with full explanations for each answer.' },
+        { goal: 'Модальные глаголы в нарративном контексте', text: 'Teach me modal verbs for expressing certainty and possibility (must, might, could, can\'t). Use a crime mystery scenario: describe a crime scene and I\'ll speculate using modals.' },
+        { goal: 'Трансформация временных форм', text: 'Take my text and rewrite it in 3 different tenses (Past Simple, Present Perfect, Future). Point out which words change and why. Text: [вставить текст ученика]' },
+        { goal: 'Согласование подлежащего и сказуемого, трудные случаи', text: 'Create a grammar mini-lesson about subject-verb agreement with unusual cases (collective nouns, indefinite pronouns). Give me 8 sentences where students commonly make mistakes, then correct with me.' },
+        { goal: 'Оппозиция Present Perfect / Past Simple', text: 'Explain the Present Perfect vs Past Simple using a visual timeline you describe in text. Give me 5 sentence pairs showing the difference in meaning. Then quiz me with 6 fill-in-the-blank sentences.' },
+        { goal: 'Грамматическая бдительность, анализ ошибок', text: 'Give me a paragraph with 8 correct sentences and 2 incorrect ones (grammar errors). I\'ll identify which sentences are wrong and explain why. You check my reasoning and add a tip.' },
+      ],
+      'Vocabulary': [
+        { goal: 'Коллокации с «make»', text: 'Teach me 8 collocations with the verb \'make\' (make a decision, make an effort...). For each one, explain when it is used and give a natural example. Then create a gap-fill exercise.' },
+        { goal: 'Ложные друзья переводчика', text: 'Give me a list of 10 false friends (Russian-English: e.g. \'magazine\' vs \'магазин\'). Explain the confusion and the correct meaning. Then give me 5 sentences using these words correctly.' },
+        { goal: 'Академическая лексика для эссе', text: 'Teach me academic vocabulary using the Academic Word List. Give me 10 words common in school essays (analyse, significant, approach...). For each: meaning, example, and a sentence frame.' },
+        { goal: 'Активная лексика через игру', text: 'Play 20 questions with me: think of an object, I\'ll ask yes/no questions to guess it. After the game, teach me vocabulary I lacked during the guessing process.' },
+        { goal: 'Полисемия, значение слова в контексте', text: 'Give me 6 words with multiple meanings (e.g. \'light\', \'bank\', \'bark\'). For each word, give 2 sentences where the meaning is different and ask me to identify which meaning is used.' },
+        { goal: 'Стратегии ведения словарного запаса', text: 'Help me build a personal vocabulary notebook system. Suggest 5 categories I should use (e.g. Topic, Example, Collocation), then help me fill in the first 5 entries for the word \'challenge\'.' },
+      ],
+    }
+  },
+  gigachat: {
+    name: 'GigaChat (Сбер)',
+    icon: '🇷🇺',
+    color: '#6936f5',
+    desc: 'GigaChat разработан с учётом специфики русскоязычной аудитории. Наиболее эффективен при объяснении грамматики через сопоставление с русским языком и при создании заданий с российским культурным контекстом.',
+    skills: {
+      'Speaking': [
+        { goal: 'Кросскультурный диалог, коррекция ошибок', text: 'Представь, что ты носитель английского языка и мой собеседник. Давай обсудим, чем русская школа отличается от британской. Задавай мне вопросы на английском, исправляй ошибки вежливо после каждой реплики.' },
+        { goal: 'Формальное общение, деловой диалог', text: 'Сыграй роль сотрудника визового центра. Я пришёл оформить туристическую визу в Великобританию. Веди диалог только на английском, используй формальный стиль. В конце перечисли 5 фраз, которые мне стоит запомнить.' },
+        { goal: 'Подготовка к ОГЭ, устная часть', text: 'Помоги мне подготовить устный ответ на вопрос "What do you do in your free time?" для ОГЭ. Сначала дай мне образец ответа на 1 минуту, потом попроси меня ответить и оцени мой ответ по критериям ОГЭ.' },
+        { goal: 'Перефразирование, обогащение речи', text: 'Задай мне 5 вопросов на английском на тему "Travelling". После каждого моего ответа предложи более сложную или интересную формулировку той же мысли.' },
+        { goal: 'Аргументированная речь, дискуссия', text: 'Давай проведём дебаты на английском: ты защищаешь позицию "Гаджеты помогают учиться", я буду против. Веди диалог на английском, используй аргументы и контраргументы. После дебатов дай обратную связь.' },
+        { goal: 'Монолог-описание, региональный контекст', text: 'Попроси меня описать мой любимый российский город на английском за 90 секунд. Потом укажи 3 ошибки и предложи 5 слов, которые сделают описание более живым.' },
+      ],
+      'Writing': [
+        { goal: 'Неформальное письмо, тема культуры и традиций', text: 'Помоги мне написать личное письмо другу-иностранцу о российских новогодних традициях. Дай сначала план письма, потом помоги написать его вместе (100–120 слов, неформальный стиль).' },
+        { goal: 'Орфографические различия вариантов английского', text: 'Объясни мне разницу между British English и American English в письменной речи (написание слов, пунктуация). Приведи 10 конкретных примеров и дай мини-тест в конце.' },
+        { goal: 'Анализ ошибок с объяснением на родном языке', text: 'Проверь моё сочинение и укажи ошибки в трёх категориях: грамматика, лексика, связность. Для каждой ошибки объясни правило на русском языке. Сочинение: [вставить текст ученика]' },
+        { goal: 'Жанр заметки, школьная тематика', text: 'Помоги мне написать короткую заметку в школьную газету (150 слов) о пользе изучения иностранных языков. Сначала предложи 3 варианта заголовка, потом помоги написать текст.' },
+        { goal: 'Структура введения в академическом эссе', text: 'Обучи меня, как правильно делать вводную часть эссе: дай образец хука, контекста и тезиса. Потом предложи мне тему, и я напишу вступление сам, ты проверишь.' },
+        { goal: 'Перевод, преодоление интерференции родного языка', text: 'Дай мне 5 русских предложений, которые нужно перевести на английский. Это классические ошибки при переводе с русского. После моего перевода объясни типичные ошибки.' },
+      ],
+      'Reading': [
+        { goal: 'Чтение с пониманием, работа с лексикой', text: 'Дай мне текст об известном российском учёном на английском языке (150 слов, уровень B1). После чтения задай 5 вопросов на понимание и помоги разобрать 5 новых слов из текста.' },
+        { goal: 'Работа с инструкционным текстом, пересказ', text: 'Дай мне инструкцию к электронному устройству на английском (4–5 предложений). Попроси меня пересказать инструкцию на английском своими словами. Оцени пересказ.' },
+        { goal: 'Стратегии чтения: skimming и scanning', text: 'Прочитай со мной короткую статью о климате в России (ты пишешь её сам, B1 уровень). После чтения помоги мне выделить главную мысль и 3 детали, используя технику skimming и scanning.' },
+        { goal: 'Сравнение текстов, межкультурная перспектива', text: 'Дай мне 2 коротких текста на одну тему: один из британского источника, один из американского. Помоги мне сравнить стиль, лексику и структуру.' },
+        { goal: 'Специализированная лексика, рецепты', text: 'Возьми простой рецепт русского блюда (например, борща) и переведи его на английский вместе со мной. Объясняй кулинарные термины по ходу.' },
+        { goal: 'Cloze test, лексико-грамматическое заполнение пропусков', text: 'Дай мне текст с 7 пропущенными словами (cloze test) о российской природе. После выполнения объясни каждый правильный ответ с точки зрения грамматики и лексики.' },
+      ],
+      'Listening': [
+        { goal: 'Знакомый контекст облегчает восприятие иностранного языка', text: 'Напечатай короткий монолог (5–6 предложений) от лица российского школьника, рассказывающего об учёбе на английском языке. Прочитай его дважды (напечатай дважды). Задай 4 вопроса на понимание.' },
+        { goal: 'Аудирование, работа с географической лексикой', text: 'Сыграй роль диктора радиостанции, объявляющего прогноз погоды в нескольких городах России на английском (Москва, СПб, Казань). Задай вопросы на понимание с опорой на географические знания.' },
+        { goal: 'Ситуативное аудирование, лексика питания', text: 'Напечатай короткий диалог в кафе: официант и посетитель заказывают еду. После диалога дай мне задание: восстановить заказ посетителя и написать его в виде чека.' },
+        { goal: 'Понимание официальных объявлений', text: 'Симулируй объявление в аэропорту о задержке рейса (4–5 предложений). Затем попроси меня ответить на вопросы: куда летит рейс, на сколько задержан, где ждать пассажирам.' },
+        { goal: 'Пошаговое аудирование, культурный контекст', text: 'Расскажи мне историю о русском путешественнике в Лондоне — по 2 предложения за раз. После каждых двух предложений задай вопрос на понимание и предикцию.' },
+        { goal: 'Аудирование и письмо, тематика праздников', text: 'Дай диктант на английском: 5 предложений о российских праздниках. Напечатай каждое предложение по два раза с паузой. Потом покажи правильный текст и объясни орфографические сложности.' },
+      ],
+      'Grammar': [
+        { goal: 'Контрастивная грамматика, опора на родной язык', text: 'Объясни мне разницу между временами Past Simple и Present Perfect, сравнивая с русским языком. Дай 6 упражнений на выбор правильного времени, объясняй каждый ответ после.' },
+        { goal: 'Артикли: типичные трудности для русских учеников', text: 'Расскажи о трудных случаях употребления артиклей для русскоязычных учеников (их нет в русском). Дай 10 предложений с пропусками, объясни логику артикля в каждом.' },
+        { goal: 'Диагностический тест с разбором на родном языке', text: 'Составь для меня тест по грамматике на 10 вопросов, охватывающий темы: артикли, времена, предлоги, условные предложения. После теста дай разбор ошибок с объяснением на русском.' },
+        { goal: 'Семантически близкие конструкции, дифференциация', text: 'Дай мне 8 пар предложений, отличающихся только одним словом (Can / Could, Some / Any, Much / Many). Объясни разницу в значении для каждой пары.' },
+        { goal: 'Порядок слов в вопросительных предложениях', text: 'Научи меня образованию вопросов в английском языке (порядок слов, вспомогательные глаголы). Покажи контраст с русским. Дай 8 утвердительных предложений для трансформации в вопросы.' },
+        { goal: 'Герундий vs инфинитив, управление глаголов', text: 'Объясни разницу между герундием и инфинитивом (I like swimming / I want to swim). Дай мне 10 глаголов, которые требуют только герундия или только инфинитива, с примерами и правилами.' },
+      ],
+      'Vocabulary': [
+        { goal: 'Безэквивалентная лексика, культурный контекст', text: 'Дай мне 10 английских слов, которые трудно перевести на русский (serendipity, cosy, etc.). Объясни значение через контекст, а не просто перевод. Дай пример употребления каждого.' },
+        { goal: 'Тематический словарь, образовательная лексика', text: 'Помоги мне выучить 8 английских слов по теме "Школа и образование". Для каждого слова: русский перевод, пример, словосочетание. Потом сделай небольшую викторину.' },
+        { goal: 'Словообразование, аффиксы', text: 'Объясни, как устроена словообразовательная система английского языка на примере корня "educate" (education, educator, educational, uneducated). Дай 3 других корня для самостоятельного анализа.' },
+        { goal: 'Паремиология, межкультурное сопоставление', text: 'Дай мне 6 английских пословиц с дословным и смысловым переводом на русский. Найди русский эквивалент для каждой. Потом попроси меня использовать 2 пословицы в контексте.' },
+        { goal: 'Тематические поля, скорость активации лексики', text: 'Поиграй со мной в игру: ты называешь категорию (например, "предметы в классе"), я называю 5 слов за 30 секунд. Ты добавляешь слова, которые я пропустил, и объясняешь их.' },
+        { goal: 'Лексические пары, типичные ошибки', text: 'Дай мне список из 10 часто путаемых пар слов (make/do, say/tell, look/see/watch). Объясни каждую пару через правило и дай по 2 примера. Сделай финальный тест на 8 вопросов.' },
+      ],
+    }
+  },
+  alisa: {
+    name: 'Алиса AI (Яндекс)',
+    icon: '🔴',
+    color: '#fc3f1d',
+    desc: 'Алиса от Яндекса интегрирована в российскую образовательную экосистему. Наиболее эффективна для первичного знакомства с языком, адаптации заданий под ОГЭ/ЕГЭ и работы в формате голосового ассистента.',
+    skills: {
+      'Speaking': [
+        { goal: 'Мотивирующая коррекция, тема распорядка дня', text: 'Алиса, давай потренируем устную речь на английском. Задавай мне по одному вопросу на тему "Мой день". После каждого моего ответа исправляй одну ошибку и хвали за правильное использование любого слова.' },
+        { goal: 'Подготовка к ОГЭ: описание изображения', text: 'Помоги мне подготовиться к устной части ОГЭ по английскому. Дай мне задание 3 (описание картинки). Сначала объясни план ответа, потом послушай мой ответ (я напечатаю) и оцени его.' },
+        { goal: 'Ситуативный диалог, лексика ориентирования', text: 'Сыграй роль иностранного туриста, который заблудился в Москве и просит у меня помощи по-английски. Я помогу ему на английском. После диалога дай мне список фраз, которые пригодятся в таких ситуациях.' },
+        { goal: 'Монолог по теме, критериальная оценка', text: 'Дай мне 5 тем для коротких устных высказываний (1 минута каждое). После того, как я отвечу на первую тему, оцени меня по 3 критериям: словарный запас, грамматика, связность.' },
+        { goal: 'Фонетика, постановка трудных звуков', text: 'Давай потренируем произношение английских звуков, которые трудны для русских (th, w, h). Объясни, как правильно произносить каждый звук, дай 3 слова-примера и попроси меня их использовать в предложениях.' },
+        { goal: 'Совместное повествование, позитивное подкрепление', text: 'Проведи со мной игру "Продолжи историю": ты начинаешь историю на английском (2–3 предложения), я продолжаю. Чередуем 6 раз. В конце укажи 2 места, где моя речь была особенно хорошей.' },
+      ],
+      'Writing': [
+        { goal: 'Неформальное письмо, тема каникул', text: 'Помоги мне написать электронное письмо другу-англичанину о том, как я провёл летние каникулы в России. Дай план, потом помоги написать письмо (100 слов, неформальный стиль).' },
+        { goal: 'Доступная обратная связь для младших школьников', text: 'Алиса, проверь моё письмо и скажи, что нужно улучшить. Объясни ошибки просто и понятно, как для 7-го класса. Письмо: [вставить текст ученика]' },
+        { goal: 'Жанр открытки, минимальные письменные тексты', text: 'Научи меня писать открытку на английском (postcard). Дай образец открытки с летнего отдыха, объясни её структуру, потом попроси меня написать похожую открытку из другого города.' },
+        { goal: 'Мини-сочинение, тема национальной кухни', text: 'Дай мне тему для мини-сочинения (80–100 слов): "My favourite Russian dish". Сначала проведи мозговой штурм вместе со мной, потом помоги написать, исправляя ошибки по ходу.' },
+        { goal: 'Шаблон письма, клишированные фразы', text: 'Составь для меня шаблон личного письма друзьям на английском: приветствие, вступительная фраза, основная часть, заключение, прощание. Объясни каждую часть и дай 2 варианта фраз для каждой.' },
+        { goal: 'Жанр объявления, лаконичный письменный текст', text: 'Помоги мне написать объявление для школьной доски объявлений на английском о потерянном телефоне. Дай структуру объявления и пример, потом я напишу сам, ты проверишь.' },
+      ],
+      'Reading': [
+        { goal: 'Чтение с множественным выбором, A2 уровень', text: 'Дай мне простой текст на английском (A2 уровень) о жизни школьников в Великобритании. После прочтения задай 5 вопросов с вариантами ответа (a, b, c). Объясни правильные ответы.' },
+        { goal: 'Поиск несоответствий, внимательное чтение', text: 'Дай мне 10 предложений на английском о российских городах. В каждом предложении одно слово заменено неправильным. Найди ошибки и объясни, какое слово должно стоять.' },
+        { goal: 'Работа с художественным текстом, моральный вывод', text: 'Прочти со мной короткую сказку на английском (Brothers Grimm, простая адаптация, A2). После каждого абзаца задавай мне 1 вопрос на понимание. В конце попроси пересказать мораль сказки.' },
+        { goal: 'Работа с прагматическим текстом, бытовая лексика', text: 'Дай мне меню английского кафе (6–8 позиций). Задай мне вопросы: Что заказать вегетарианцу? Что стоит дешевле всего? Как называется блюдо с курицей?' },
+        { goal: 'Лексика животного мира, активизация через кроссворд', text: 'Дай мне кроссворд на 8 слов по теме "Animals". Опиши каждое слово по-английски (определение), я угадаю слово. Потом составь предложение с каждым словом.' },
+        { goal: 'Предлоги в контексте, тема путешествий', text: 'Дай мне текст с пропущенными предлогами (8 пропусков) о поездке в Лондон. Заполни пропуски и объясни выбор каждого предлога: in/on/at/to/from.' },
+      ],
+      'Listening': [
+        { goal: 'Диктант, закрепление орфографии', text: 'Алиса, напечатай 5 коротких предложений (диктант) о моей школе на английском языке, каждое по два раза. Я буду их записывать. Потом покажи правильный вариант и объясни мои ошибки.' },
+        { goal: 'Понимание учебных инструкций', text: 'Сыграй роль учителя, который даёт задание классу на английском. Напечатай задание два раза (медленно и чуть быстрее). Потом спроси меня: Что нужно сделать? К какому сроку? Какие материалы нужны?' },
+        { goal: 'Понимание прогноза погоды, знакомый контекст', text: 'Напечатай короткий прогноз погоды в Санкт-Петербурге на эту неделю (5 предложений) на английском. Задай мне вопросы: Какая погода будет в пятницу? Нужен ли зонт? Как одеться в среду?' },
+        { goal: 'Понимание диалогов планирования', text: 'Напечатай диалог двух школьников, договаривающихся о встрече после уроков на английском. После диалога спроси: Где они встретятся? Во сколько? Что они будут делать?' },
+        { goal: 'Аудирование, страноведческая тематика', text: 'Расскажи мне по-английски о традиции праздновать Halloween в Великобритании (4–5 предложений). После этого попроси меня написать 3 факта, которые я запомнил.' },
+        { goal: 'Короткие объявления, школьная лексика', text: 'Напечатай 6 коротких объявлений по школьному радио на английском (каждое 1–2 предложения). Задай мне 2 вопроса по каждому объявлению. Тема объявлений: расписание, кружки, школьные события.' },
+      ],
+      'Grammar': [
+        { goal: 'Present Simple для начального уровня', text: 'Объясни мне правило употребления Present Simple для 5-го класса. Используй простые слова, смешные примеры про школьную жизнь. Потом дай 5 упражнений с заполнением пропусков.' },
+        { goal: 'Past Simple, игровое закрепление', text: 'Давай поиграем в грамматическую игру: ты называешь глагол, я ставлю его в Past Simple. Если правильно, я получаю 1 балл. Сыграем 10 раундов, потом скажи мой итоговый счёт.' },
+        { goal: 'Неопределённый артикль, начальный уровень', text: 'Объясни разницу между "a" и "an" для начинающих. Дай правило, 10 примеров слов с каждым артиклем, и мини-игру на 8 вопросов с вариантами ответа.' },
+        { goal: 'Неправильные глаголы, мнемотехники', text: 'Помоги мне запомнить 10 неправильных глаголов через рифмы или ассоциации. Для каждого глагола дай три формы (V1, V2, V3) и простое предложение с Past Simple формой.' },
+        { goal: 'Перевод, преодоление типичных ошибок', text: 'Дай мне 6 простых предложений для перевода с русского на английский. Выбери предложения, где русскоязычные ученики часто делают ошибки (порядок слов, артикли). Проверь мои переводы.' },
+        { goal: 'Специальные вопросы, начальный уровень', text: 'Объясни мне, как строить вопросы с Who и What в Present Simple. Дай 3 примера каждого типа, потом дай мне 8 ситуаций для составления вопросов самостоятельно.' },
+      ],
+      'Vocabulary': [
+        { goal: 'Базовая лексика школьных принадлежностей, A1–A2', text: 'Алиса, давай выучим 10 слов по теме "Школьные принадлежности" на английском. Для каждого слова дай перевод, произношение и смешной пример предложения. Потом проверь меня в игре "Угадай слово по описанию".' },
+        { goal: 'Тематическая лексика, тренировка памяти', text: 'Поиграй со мной в "Снежный ком": ты называешь 1 слово по теме "Еда", я повторяю его и добавляю своё. Следующий ход ты повторяешь оба и добавляешь ещё. Доходим до 10 слов.' },
+        { goal: 'Антонимы, лексика описания внешности', text: 'Дай мне 8 слов-антонимов на тему "Описание внешности" (tall/short, dark/fair...). Для каждой пары дай пример предложения с обоими словами. Потом задай мне 5 вопросов на сопоставление.' },
+        { goal: 'Числительные, дни и месяцы, A1 уровень', text: 'Научи меня базовым числительным (days of week, months, ordinal numbers) через песенку или рифмовку. После объяснения дай мне задание: написать дату своего рождения на английском.' },
+        { goal: 'Лексика животных, произношение', text: 'Дай мне 10 слов по теме "Животные" с транскрипцией произношения. Объясни, как читается каждое слово. Потом задай загадки: угадай животное по описанию на английском.' },
+        { goal: 'Цвета и прилагательные в бытовом контексте', text: 'Помоги мне выучить цвета и простые прилагательные на английском через описание предметов в комнате. Задавай мне вопросы: "What colour is the door?" — я отвечаю по-английски.' },
+      ],
+    }
+  }
+};
+
+const SKILL_ICONS = {
+  Speaking: '🗣️', Writing: '✍️', Reading: '📖',
+  Listening: '🎧', Grammar: '📐', Vocabulary: '💬'
+};
+
+// Описания и развиваемые навыки для каждого промпта
+const PROMPT_META = {
+  chatgpt: {
+    Speaking: [
+      { desc: 'Отрабатывает плавность речи в реальном диалоге. Учитель мягко исправляет ошибки, не прерывая поток разговора.', skills: ['Диалог', 'Коррекция ошибок', 'B1–B2'] },
+      { desc: 'Ролевая игра в бытовой ситуации: покупка сувенира. Помогает освоить повседневную лексику и фразы вежливости.', skills: ['Ролевая игра', 'Лексика', 'A2–B1'] },
+      { desc: 'Симуляция собеседования на работу. Тренирует уверенную деловую речь и умение структурировать ответы.', skills: ['Деловая речь', 'Аргументация', 'B2'] },
+      { desc: 'Описание изображения — ключевой формат ОГЭ/ЕГЭ. Развивает монологическую речь и умение делать выводы.', skills: ['Монолог', 'ОГЭ/ЕГЭ', 'B1+'] },
+      { desc: 'Дебаты развивают аргументированную речь, умение выражать несогласие и отстаивать позицию на английском.', skills: ['Аргументация', 'Дискуссия', 'B2'] },
+      { desc: 'Спонтанный монолог на случайную тему — эффективный способ активизировать весь имеющийся словарный запас.', skills: ['Спонтанная речь', 'Словарный запас', 'B1'] },
+    ],
+    Writing: [
+      { desc: 'Официальное письмо — обязательный жанр ОГЭ/ЕГЭ. Пошаговое написание помогает усвоить структуру и формальный регистр.', skills: ['Официальное письмо', 'Регистр', 'B1'] },
+      { desc: 'Анализ собственных ошибок с объяснением правил — самый быстрый способ улучшить грамотность письма.', skills: ['Самокоррекция', 'Грамматика', 'B1–B2'] },
+      { desc: 'Творческое письмо развивает воображение и умение связно излагать мысли в рамках нарратива.', skills: ['Творческое письмо', 'Структура текста', 'B1'] },
+      { desc: 'Метод PEEL — академический способ построения абзаца. Формирует навык структурированного изложения аргументов.', skills: ['Академическое письмо', 'PEEL', 'B2'] },
+      { desc: 'Подготовка к экзаменационному эссе: мозговой штурм аргументов + написание введения. Снимает «страх белого листа».', skills: ['Эссе', 'ОГЭ/ЕГЭ', 'B2'] },
+      { desc: 'Сравнение трёх стилей одного предложения развивает стилистическое чутьё и осознанность в выборе слов.', skills: ['Стиль', 'Регистр', 'B2+'] },
+    ],
+    Reading: [
+      { desc: 'Работа с адаптированным текстом и вопросами на понимание. Классический формат аудиторного чтения.', skills: ['Понимание текста', 'Лексика', 'B1'] },
+      { desc: 'Угадывание значения слов по контексту — ключевая стратегия для чтения аутентичных текстов без словаря.', skills: ['Чтение без словаря', 'Контекстные стратегии', 'B1+'] },
+      { desc: 'Предчтение по заголовку активирует фоновые знания и подготавливает мозг к восприятию нового текста.', skills: ['Стратегии чтения', 'Критическое мышление', 'B1'] },
+      { desc: 'Выделение главной идеи и деталей — базовые аналитические навыки, необходимые для всех экзаменационных форматов.', skills: ['Анализ текста', 'Основная идея', 'B1'] },
+      { desc: 'Формат True/False/Not Given — стандартное задание ЕГЭ. Тренирует внимательность и умение разграничивать факты.', skills: ['ЕГЭ формат', 'Детальное понимание', 'B1–B2'] },
+      { desc: 'Чтение вслух с фонетическим анализом помогает связать написание слова с его произношением.', skills: ['Произношение', 'Фонетика', 'A2–B1'] },
+    ],
+    Listening: [
+      { desc: 'Симуляция прогноза погоды через текст. Тренирует восприятие фактической информации и профессиональной лексики.', skills: ['Восприятие на слух', 'Лексика', 'A2–B1'] },
+      { desc: 'Диктант с двойным повтором — проверенный способ улучшить орфографию и фокус внимания.', skills: ['Диктант', 'Орфография', 'A2–B1'] },
+      { desc: 'Диалог двух персонажей тренирует различение голосов и восприятие разговорной речи.', skills: ['Диалоговая речь', 'Понимание', 'B1'] },
+      { desc: 'Экзаменационный формат с множественным выбором. Отработка стратегии исключения неверных ответов.', skills: ['ОГЭ/ЕГЭ формат', 'Тест', 'B1'] },
+      { desc: 'Пересказ услышанной истории — лучший способ проверить, насколько хорошо воспринята информация.', skills: ['Пересказ', 'Нарратив', 'B1'] },
+      { desc: 'Стратегия chunking: воспринимать текст по частям, а не целиком. Снижает когнитивную нагрузку при слушании.', skills: ['Стратегии аудирования', 'Конспектирование', 'B1'] },
+    ],
+    Grammar: [
+      { desc: 'Объяснение Present Simple vs Continuous с примерами из жизни подростков. Игровой тест закрепляет правило.', skills: ['Времена', 'Present Simple/Continuous', 'A2–B1'] },
+      { desc: 'Целенаправленная работа над артиклями — частой ошибкой русскоязычных учеников. Правила объясняются в контексте.', skills: ['Артикли', 'Самостоятельная работа над ошибками', 'A2–B1'] },
+      { desc: 'Четыре типа условных предложений в контексте школьной жизни. Каждый тип закрепляется практическим заданием.', skills: ['Условные предложения', 'B1–B2', 'Синтаксис'] },
+      { desc: 'Анализ ошибок собственного текста с правилом для каждой — самый персонализированный способ изучения грамматики.', skills: ['Грамматика', 'Коррекция', 'B1+'] },
+      { desc: 'Геймификация грамматики: система «escape room» мотивирует дойти до конца и не бросить задание.', skills: ['Игровой формат', 'Смешанная грамматика', 'B1'] },
+      { desc: 'Пассивный залог на теме изобретений — тренирует трансформацию предложений в тематическом контексте.', skills: ['Пассивный залог', 'Трансформация', 'B1'] },
+    ],
+    Vocabulary: [
+      { desc: 'Фразовые глаголы с определением, примером и мнемотехникой. Самый эффективный способ запомнить этот сложный пласт лексики.', skills: ['Фразовые глаголы', 'Мнемотехники', 'B1'] },
+      { desc: 'Тематическое изучение лексики окружающей среды с таблицей коллокаций — для систематического расширения словаря.', skills: ['Тематическая лексика', 'Коллокации', 'B1'] },
+      { desc: 'Игра «слово-ассоциация» активирует пассивный словарный запас и выявляет лексические пробелы.', skills: ['Активизация лексики', 'Игровой формат', 'B1'] },
+      { desc: 'Идиомы о времени через истории и образы запоминаются лучше, чем сухие дефиниции.', skills: ['Идиомы', 'Образная память', 'B1–B2'] },
+      { desc: 'Лексическая карта «Городская жизнь» даёт систематизированный обзор 20 слов с заданием-закреплением.', skills: ['Систематизация лексики', 'Лексическая карта', 'B1'] },
+      { desc: 'Описание предмета без названия — игра активирует описательную лексику и стимулирует творческое мышление.', skills: ['Описательная лексика', 'Игровой формат', 'B1'] },
+    ],
+  },
+  gemini: {
+    Speaking: [
+      { desc: 'Живой диалог о дружбе с вопросами и естественными ответами. Три конкретные рекомендации по улучшению в конце.', skills: ['Диалог', 'Спонтанная речь', 'B1'] },
+      { desc: 'Ролевая игра «гид по Эдинбургу» обогащает описательную лексику и прилагательные через реальный туристический контекст.', skills: ['Описательная лексика', 'Ролевая игра', 'B1'] },
+      { desc: 'Монолог о фильме с последующими вопросами. Подсказки делают речь более естественной и богатой.', skills: ['Монолог', 'Речевые клише', 'B1'] },
+      { desc: 'Дискуссия с формулами согласия/несогласия — необходимыми конструкциями для любого живого диалога.', skills: ['Дискуссия', 'Речевые формулы', 'B1–B2'] },
+      { desc: 'Медицинская ролевая игра расширяет тематическую лексику и тренирует описание симптомов.', skills: ['Тематическая лексика', 'Ролевая игра', 'B1'] },
+      { desc: 'Метод Сократа для обсуждения проблем — уникальный формат, развивающий аналитическую и эмоциональную речь.', skills: ['Критическое мышление', 'Нарративная речь', 'B2'] },
+    ],
+    Writing: [
+      { desc: 'Блог-пост с заголовком и планом — жанр, популярный у подростков. Сочетает структуру с творческой свободой.', skills: ['Блог', 'Структура текста', 'B1'] },
+      { desc: 'Неформальное письмо с 5 готовыми фразами. Прямая отработка жанра «письмо другу» из ОГЭ.', skills: ['Неформальное письмо', 'ОГЭ формат', 'A2–B1'] },
+      { desc: 'Таблица исправлений «Оригинал — Исправление — Причина» делает обратную связь наглядной и удобной для повторения.', skills: ['Коррекция', 'Осознанное письмо', 'B1'] },
+      { desc: 'Парафраз — обязательный навык для академического письма. Два варианта для каждого предложения показывают гибкость языка.', skills: ['Парафраз', 'Академическое письмо', 'B2'] },
+      { desc: 'Написание истории поэтапно: герой, конфликт, развязка. Совместная работа над первым абзацем снимает страх «чистого листа».', skills: ['Творческое письмо', 'Нарратив', 'B1'] },
+      { desc: 'Образцовый ответ на экзаменационное задание с пятью фразами для заучивания — готовая подготовка к ОГЭ/ЕГЭ.', skills: ['Рецензия', 'ОГЭ/ЕГЭ', 'B1–B2'] },
+    ],
+    Reading: [
+      { desc: 'Аутентичный текст об изменении климата с лексикой из контекста. Формирует навык чтения реальных англоязычных источников.', skills: ['Аутентичный текст', 'Лексика', 'B1'] },
+      { desc: 'Биография Кюри с заданием на хронологию. Тренирует умение следить за временными маркерами в нарративном тексте.', skills: ['Биографический текст', 'Хронология', 'A2–B1'] },
+      { desc: 'Структурный анализ абзаца: главная идея, аргументы, вывод. Базовый навык для понимания любого текста.', skills: ['Анализ абзаца', 'Структура', 'B1'] },
+      { desc: 'Множественный выбор с объяснением дистракторов — именно то, что нужно для подготовки к разделу «Чтение» ОГЭ/ЕГЭ.', skills: ['Множественный выбор', 'ОГЭ/ЕГЭ', 'B1'] },
+      { desc: 'Интерпретация поэзии развивает культурную грамотность и умение читать между строк — навык важный за пределами экзамена.', skills: ['Поэзия', 'Интерпретация', 'B2'] },
+      { desc: 'Skim-reading за 60 секунд — тренирует скорость чтения и умение выхватывать главное без детального разбора.', skills: ['Skim-reading', 'Скорость чтения', 'B1'] },
+    ],
+    Listening: [
+      { desc: 'Пошаговое аудирование новостного бюллетеня с вопросом после каждых двух предложений. Снижает нагрузку на рабочую память.', skills: ['Аудирование', 'Новостная лексика', 'B1'] },
+      { desc: 'Интерактивное радиоинтервью: вопрос на понимание после каждой реплики гостя. Отрабатывает биографическую лексику.', skills: ['Интервью', 'Биографическая лексика', 'B1'] },
+      { desc: 'Заполнение краткого конспекта после речи директора — практический навык конспектирования официальной речи.', skills: ['Конспектирование', 'Официальная речь', 'B1'] },
+      { desc: 'Диалог в бюро находок аэропорта. Тренирует лексику путешествий в реалистичном коммуникативном контексте.', skills: ['Лексика путешествий', 'Ролевой диалог', 'A2–B1'] },
+      { desc: 'Предсказание следующего события в рассказе активирует аналитическое мышление и удерживает внимание.', skills: ['Активное слушание', 'Предсказание', 'B1'] },
+      { desc: 'Тренировка через лирику: быстрый и медленный темп. Помогает понять связь между произношением и написанием.', skills: ['Лирика', 'Восприятие на слух', 'A2–B1'] },
+    ],
+    Grammar: [
+      { desc: 'Три формы будущего времени с реальными примерами. Чётко разграничивает намерения, спонтанные решения и планы.', skills: ['Будущее время', 'B1', 'Времена'] },
+      { desc: 'Косвенная речь пошагово: правила трансформации с практическими предложениями. Ключевая тема B1–B2.', skills: ['Косвенная речь', 'Трансформация', 'B1–B2'] },
+      { desc: 'Диагностический тест охватывает четыре ключевые темы и выдаёт персональный план повторения.', skills: ['Диагностика', 'Смешанная грамматика', 'B1'] },
+      { desc: 'Придаточные определительные who/which/where через описание воображаемой сцены — живой контекст лучше упражнений.', skills: ['Придаточные предложения', 'Синтаксис', 'B1'] },
+      { desc: '10 специально допущенных ошибок для поиска. Развивает «грамматическую бдительность» и внимание к деталям.', skills: ['Поиск ошибок', 'Грамматика', 'B1'] },
+      { desc: 'Предлоги времени и места в контексте школьной жизни. Финальная таблица фиксирует пробелы для повторения.', skills: ['Предлоги', 'B1', 'Школьная лексика'] },
+    ],
+    Vocabulary: [
+      { desc: 'Лексика технологий с мнемотехникой через русские ассоциации — особенно эффективно для русскоязычных учеников.', skills: ['Технологии', 'Мнемотехника', 'B1'] },
+      { desc: 'Игра «Taboo» — лучший способ активировать словарный запас: надо описывать слово, не называя его.', skills: ['Активизация лексики', 'Игра Taboo', 'B1'] },
+      { desc: '6 синонимов слова «said» плюс собственный рассказ — формирует богатый нарративный стиль.', skills: ['Синонимы', 'Нарратив', 'B1–B2'] },
+      { desc: 'Устойчивые выражения с «time» через диалоговые контексты. Финальный тест проверяет усвоение.', skills: ['Идиомы', 'Устойчивые выражения', 'B1'] },
+      { desc: 'Описание комнаты с расширением словаря. Конкретные, точные слова делают речь живее и образнее.', skills: ['Описательная лексика', 'Детализация', 'B1'] },
+      { desc: 'Шкала интенсивности эмоций (sad→upset→devastated) учит передавать оттенки чувств точно и выразительно.', skills: ['Эмоциональная лексика', 'Градация', 'B1–B2'] },
+    ],
+  },
+  claude: {
+    Speaking: [
+      { desc: 'Диалог о хобби с исправлением одной ошибки и добавлением одного выражения за ход. Мягкий формат для развития уверенности.', skills: ['Диалог', 'Коррекция', 'B1'] },
+      { desc: 'Структурированная оценка монолога по четырём критериям: беглость, лексика, аргументы, грамматика. Как на реальном экзамене.', skills: ['Монолог', 'Оценивание', 'B1–B2'] },
+      { desc: 'Совместное рассказывание истории — тренирует связность речи и умение продолжать нарратив другого.', skills: ['Нарратив', 'Связность речи', 'B1'] },
+      { desc: 'Дискурсивные маркеры (firstly, however, in addition) на примере модельной речи. Затем — самостоятельный мини-спич.', skills: ['Дискурсивные маркеры', 'Монолог', 'B2'] },
+      { desc: 'Трудный звонок в поддержку клиентов. Реалистичная ситуация проверяет умение настоять на своём по-английски.', skills: ['Деловая коммуникация', 'Стрессовая ситуация', 'B2'] },
+      { desc: 'Описание изобретённой диаграммы вслух. Тренирует язык данных и статистики — важный навык для B2+.', skills: ['Описание графиков', 'Академическая речь', 'B2'] },
+    ],
+    Writing: [
+      { desc: 'Деловое письмо учителю в три этапа: план → черновик → редактура. Формирует культуру письменной работы.', skills: ['Официальное письмо', 'Редактура', 'B1–B2'] },
+      { desc: 'Детальный разбор текста по 4 критериям со шкалой 1–5. Даёт чёткое понимание своего уровня письма.', skills: ['Многокритериальная оценка', 'Аналитика', 'B1–B2'] },
+      { desc: 'Аргументативное эссе со структурой и совместным написанием. Пошаговый подход снимает страх сложного жанра.', skills: ['Эссе', 'Аргументация', 'B2'] },
+      { desc: 'Замена слабых слов (good/bad/nice) на яркие синонимы с объяснением коннотаций. Мгновенно улучшает стиль.', skills: ['Обогащение лексики', 'Стиль', 'B1–B2'] },
+      { desc: 'Топик-сентенс → PEEL параграф: сначала пример, потом самостоятельное задание с обратной связью.', skills: ['Академическое письмо', 'PEEL', 'B2'] },
+      { desc: 'Переходные слова по четырём категориям + задание на восстановление порядка абзаца. Улучшает связность текста.', skills: ['Связность', 'Переходные слова', 'B1–B2'] },
+    ],
+    Reading: [
+      { desc: 'Синтаксический разбор сложного предложения: главное и придаточные. Развивает аналитическое понимание грамматики.', skills: ['Синтаксис', 'Анализ предложения', 'B2'] },
+      { desc: 'Критическое чтение: утверждение, доказательства, предположения, логические ошибки. Навык высшего порядка.', skills: ['Критическое мышление', 'Анализ аргументации', 'B2'] },
+      { desc: 'Угадывание значений 8 слов из контекста без словаря с оценкой попыток. Ключевая стратегия чтения.', skills: ['Контекстные стратегии', 'Лексика', 'B1–B2'] },
+      { desc: 'Рассказ с неожиданной концовкой: анализ сигналов + написание альтернативного финала. Развивает творческое и критическое мышление.', skills: ['Интерпретация', 'Творческое письмо', 'B1–B2'] },
+      { desc: 'Сравнительный анализ двух точек зрения + написание параграфа-сравнения. Формат встречается на всех экзаменах.', skills: ['Сравнительный анализ', 'Академическое письмо', 'B2'] },
+      { desc: 'Рецепт на английском: порядок шагов, глаголы в императиве, кулинарные термины. Практический аутентичный текст.', skills: ['Инструкционный текст', 'Императив', 'B1'] },
+    ],
+    Listening: [
+      { desc: 'Конспектирование презентации с ключевыми словами за каждый отрезок. Развивает умение выделять главное.', skills: ['Конспектирование', 'Академический монолог', 'B1–B2'] },
+      { desc: 'Дебаты «за и против онлайн-обучения» с последующим анализом силы аргументов. Тренирует критическое аудирование.', skills: ['Дебаты', 'Критическое аудирование', 'B2'] },
+      { desc: 'Текст с тремя намеренными неясностями учит различать, что понял точно, а что осталось неоднозначным.', skills: ['Критическое аудирование', 'Стратегии понимания', 'B1–B2'] },
+      { desc: 'Мини-лекция о круговороте воды с восстановлением текста из ключевых слов. Тренирует академическое аудирование.', skills: ['Академическое аудирование', 'Конспектирование', 'B1–B2'] },
+      { desc: 'Инструкция с маршрутом: первый раз быстро, второй медленно. Развивает пространственное восприятие речи.', skills: ['Ориентирование', 'Аудирование инструкций', 'B1'] },
+      { desc: 'Анализ вступления TED Talk: главная идея, риторический приём, оценка. Формирует навык критического слушателя.', skills: ['TED Talk', 'Риторика', 'B2'] },
+    ],
+    Grammar: [
+      { desc: 'Тонкое различие used to / would / be used to — одна из самых частых ошибок на уровне B2. Объяснение + 6 заданий.', skills: ['used to / would', 'B2', 'Лексическая грамматика'] },
+      { desc: 'Модальные глаголы уверенности/вероятности через детективную сцену. Контекст делает правило запоминающимся.', skills: ['Модальные глаголы', 'Детективный контекст', 'B2'] },
+      { desc: 'Трансформация текста в три разных времени. Наглядно показывает, как меняется смысл при смене времени.', skills: ['Трансформация текста', 'Времена', 'B1–B2'] },
+      { desc: 'Согласование подлежащего и сказуемого в трудных случаях (собирательные существительные, местоимения). Продвинутый уровень.', skills: ['Согласование', 'Синтаксис', 'B2'] },
+      { desc: 'Present Perfect vs Past Simple на временной линии + 5 пар предложений + 6 заданий. Самое полное объяснение темы.', skills: ['Present Perfect', 'Past Simple', 'B1'] },
+      { desc: '10 предложений: 8 верных, 2 с ошибками. Найти неверные и объяснить почему — лучший тест «грамматической интуиции».', skills: ['Поиск ошибок', 'Грамматическая интуиция', 'B1–B2'] },
+    ],
+    Vocabulary: [
+      { desc: '8 коллокаций с make: когда употребляется, пример и gap-fill. Коллокации — ключ к естественному звучанию речи.', skills: ['Коллокации', 'make', 'B1'] },
+      { desc: '10 «ложных друзей» Russian-English с правильными значениями и примерами. Устраняет самые частые ошибки в переводе.', skills: ['Ложные друзья', 'Перевод', 'B1'] },
+      { desc: 'Академическая лексика AWL с рамками предложений. Необходима для написания эссе на B2–C1.', skills: ['Академическая лексика', 'AWL', 'B2'] },
+      { desc: 'Игра «20 вопросов» выявляет пробелы: после игры ты получаешь именно ту лексику, которой не хватало.', skills: ['Активизация лексики', '20 вопросов', 'B1'] },
+      { desc: 'Шесть многозначных слов в разных контекстах. Умение понимать полисемию — маркер продвинутого уровня.', skills: ['Полисемия', 'Контекст', 'B1–B2'] },
+      { desc: 'Система личного словарного блокнота с 5 колонками. Внедрение системы — лучшая инвестиция в долгосрочное изучение.', skills: ['Стратегии запоминания', 'Словарный запас', 'B1+'] },
+    ],
+  },
+  gigachat: {
+    Speaking: [
+      { desc: 'Кросскультурный диалог о различиях школ. Тренирует тематическую лексику с понятным российским контекстом.', skills: ['Диалог', 'Кросскультурность', 'B1'] },
+      { desc: 'Деловой визовый диалог на английском с формальным стилем. Список фраз в конце — готовый словарный минимум.', skills: ['Деловая речь', 'Формальный стиль', 'B1'] },
+      { desc: 'Образцовый ответ + самостоятельный ответ + оценка по критериям ОГЭ. Прямая подготовка к устному экзамену.', skills: ['ОГЭ подготовка', 'Монолог', 'B1'] },
+      { desc: 'После каждого ответа предлагается более сложная формулировка той же мысли. Метод «апгрейда» речи.', skills: ['Перефразирование', 'Обогащение речи', 'B1'] },
+      { desc: 'Дебаты о гаджетах в учёбе с аргументами и контраргументами. Обратная связь на русском делает критику понятнее.', skills: ['Дебаты', 'Аргументация', 'B1–B2'] },
+      { desc: 'Монолог о российском городе с конкретными рекомендациями и 5 новыми словами. Региональный контекст мотивирует.', skills: ['Монолог-описание', 'Лексика мест', 'B1'] },
+    ],
+    Writing: [
+      { desc: 'Письмо иностранному другу о новогодних традициях. Неформальный стиль + культурный контент = двойная польза.', skills: ['Неформальное письмо', 'Культурный контекст', 'A2–B1'] },
+      { desc: '10 различий British/American English в написании с мини-тестом. Помогает определиться со стандартом и избежать смешения.', skills: ['British vs American', 'Орфография', 'B1'] },
+      { desc: 'Проверка по трём категориям с объяснением правил на русском языке. Максимально понятная обратная связь.', skills: ['Коррекция', 'Грамматика/лексика/связность', 'B1'] },
+      { desc: 'Заметка в школьную газету: три варианта заголовка + совместное написание. Реальный учебный жанр с практическим результатом.', skills: ['Школьная газета', 'Заголовки', 'B1'] },
+      { desc: 'Хук + контекст + тезис в академическом введении — три обязательных элемента любого экзаменационного эссе.', skills: ['Академическое эссе', 'Введение', 'B2'] },
+      { desc: '5 предложений с классическими ошибками при переводе с русского. Снимает интерференцию родного языка.', skills: ['Перевод', 'Интерференция', 'B1'] },
+    ],
+    Reading: [
+      { desc: 'Текст о российском учёном на английском: понятная тема снижает когнитивную нагрузку при чтении на иностранном языке.', skills: ['Понимание текста', 'B1', 'Знакомый контекст'] },
+      { desc: 'Пересказ инструкции своими словами — тренирует перефразирование и активизирует пассивный словарный запас.', skills: ['Пересказ', 'Инструкционный текст', 'B1'] },
+      { desc: 'Skimming и scanning на тексте о климате в России. Знакомая тема + стратегии чтения = уверенный результат.', skills: ['Skimming/Scanning', 'Стратегии чтения', 'B1'] },
+      { desc: 'Сравнение British и American источников по стилю, лексике и структуре. Развивает межкультурную грамотность.', skills: ['Сравнительный анализ', 'Стиль', 'B2'] },
+      { desc: 'Совместный перевод рецепта борща с кулинарными терминами. Практический и мотивирующий формат работы с текстом.', skills: ['Перевод', 'Кулинарная лексика', 'B1'] },
+      { desc: 'Cloze test о российской природе: заполнение пропусков с грамматическим и лексическим объяснением каждого ответа.', skills: ['Cloze test', 'Грамматика в контексте', 'B1'] },
+    ],
+    Listening: [
+      { desc: 'Монолог российского школьника на английском: знакомая тема и словарный запас облегчают восприятие иностранного языка.', skills: ['Аудирование', 'Знакомый контекст', 'A2–B1'] },
+      { desc: 'Прогноз погоды по городам России. Географические знания помогают верифицировать услышанное — эффективная стратегия.', skills: ['Лексика погоды', 'Географический контекст', 'B1'] },
+      { desc: 'Диалог в кафе с заданием восстановить чек. Практическое, конкретное задание с чётким ожидаемым результатом.', skills: ['Диалог', 'Лексика питания', 'A2–B1'] },
+      { desc: 'Объявление о задержке рейса: три конкретных вопроса проверяют понимание ключевой информации.', skills: ['Объявления', 'Аэропортная лексика', 'B1'] },
+      { desc: 'История по 2 предложения с вопросом и предсказанием. Удерживает внимание и тренирует предсказывающее мышление.', skills: ['Нарративное аудирование', 'Предсказание', 'B1'] },
+      { desc: 'Диктант о российских праздниках: двойной повтор + показ правильного текста + разбор орфографии.', skills: ['Диктант', 'Орфография', 'A2–B1'] },
+    ],
+    Grammar: [
+      { desc: 'Past Simple vs Present Perfect через сопоставление с русским языком — самый эффективный способ для русскоязычных учеников.', skills: ['Past Simple/Present Perfect', 'Контрастивная грамматика', 'B1'] },
+      { desc: 'Артикли — самая трудная тема для русскоязычных (их нет в русском). Объяснение + 10 примеров с логикой выбора.', skills: ['Артикли', 'Трудные случаи', 'A2–B1'] },
+      { desc: 'Тест с разбором ошибок на русском языке. Ни один другой ИИ не объясняет грамматику так понятно на родном языке.', skills: ['Диагностика', 'Объяснение на русском', 'B1'] },
+      { desc: '8 пар предложений с одним изменённым словом (Can/Could, Some/Any). Тонкая семантическая работа с языком.', skills: ['Семантика', 'Лексическая грамматика', 'B1'] },
+      { desc: 'Порядок слов в вопросах с контрастом к русскому языку. 8 предложений для трансформации закрепляют правило.', skills: ['Порядок слов', 'Вопросы', 'A2–B1'] },
+      { desc: 'Герундий vs инфинитив: 10 управляющих глаголов с примерами. Одна из ключевых тем для B1.', skills: ['Герундий/инфинитив', 'Управление глаголов', 'B1'] },
+    ],
+    Vocabulary: [
+      { desc: '10 непереводимых английских слов с объяснением через контекст. Расширяет концептуальный кругозор, а не только словарный запас.', skills: ['Безэквивалентная лексика', 'Культурный контекст', 'B1–B2'] },
+      { desc: '8 слов по теме «Школа»: перевод, пример, коллокация + викторина. Самая актуальная тема для учеников.', skills: ['Школьная лексика', 'Коллокации', 'A2–B1'] },
+      { desc: 'Словообразование от корня «educate»: 4 производных + 3 корня для самостоятельного анализа. Системный подход к лексике.', skills: ['Словообразование', 'Аффиксы', 'B1–B2'] },
+      { desc: '6 пословиц с дословным и смысловым переводом + русский эквивалент. Межкультурная работа с языком.', skills: ['Пословицы', 'Межкультурность', 'B1'] },
+      { desc: 'Категория → 5 слов за 30 секунд. Тренирует скорость активации лексики — важный навык для устного экзамена.', skills: ['Скорость активации', 'Тематические поля', 'B1'] },
+      { desc: '10 пар часто путаемых слов (make/do, say/tell, look/see) с правилами и финальным тестом. Устраняет системные ошибки.', skills: ['Путаемые слова', 'Лексические пары', 'B1'] },
+    ],
+  },
+  alisa: {
+    Speaking: [
+      { desc: 'Исправление одной ошибки + похвала за правильное слово в каждой реплике. Мотивирующий формат для начинающих.', skills: ['Диалог', 'Позитивная коррекция', 'A2'] },
+      { desc: 'Подготовка к заданию 3 ОГЭ: план ответа + описание + оценка. Прямой формат экзаменационной подготовки.', skills: ['ОГЭ задание 3', 'Описание картинки', 'B1'] },
+      { desc: 'Иностранец заблудился в Москве — понятная ситуация + список полезных фраз ориентирования после диалога.', skills: ['Ролевая игра', 'Лексика ориентирования', 'A2–B1'] },
+      { desc: 'Монолог на 1 минуту с оценкой по трём критериям. Формирует понимание, как оценивается устная речь на экзамене.', skills: ['Монолог', 'Критериальная оценка', 'B1'] },
+      { desc: 'Постановка звуков th/w/h через объяснение, примеры и практику в предложениях. Ключевые звуки для русских учеников.', skills: ['Фонетика', 'Трудные звуки', 'A2'] },
+      { desc: 'Совместная история с похвалой за лучшие реплики. Игровой формат снижает языковую тревогу.', skills: ['Нарратив', 'Позитивное подкрепление', 'A2–B1'] },
+    ],
+    Writing: [
+      { desc: 'Письмо другу о каникулах с планом и совместным написанием 100 слов. Идеально для начального уровня письма.', skills: ['Неформальное письмо', 'Планирование', 'A2'] },
+      { desc: 'Простое объяснение ошибок «как для 7-го класса». Алиса доступнее всего объясняет базовые правила.', skills: ['Доступная коррекция', 'A2–B1', 'Обратная связь'] },
+      { desc: 'Структура открытки + образец + самостоятельное написание. Минимальный жанр с максимально чёткой структурой.', skills: ['Открытка', 'Жанр', 'A2'] },
+      { desc: 'Мини-сочинение с мозговым штурмом и исправлением в процессе. Снимает страх перед письмом через совместную работу.', skills: ['Мини-сочинение', 'Мозговой штурм', 'A2–B1'] },
+      { desc: 'Шаблон личного письма с 5 частями и 2 вариантами фраз для каждой. Готовый инструмент для написания любого письма.', skills: ['Шаблон письма', 'Клишированные фразы', 'A2–B1'] },
+      { desc: 'Объявление о потерянном телефоне: структура + пример + самостоятельная работа с проверкой. Практический жанр.', skills: ['Объявление', 'Лаконичное письмо', 'A2–B1'] },
+    ],
+    Reading: [
+      { desc: 'Текст A2 о британских школьниках + 5 вопросов с вариантами + объяснение ответов. Классический формат начального уровня.', skills: ['Текст A2', 'Множественный выбор', 'A2'] },
+      { desc: 'Найти замененное слово в предложении — задание на внимательное чтение с нестандартным форматом.', skills: ['Внимательное чтение', 'Поиск несоответствий', 'A2–B1'] },
+      { desc: 'Сказка с вопросом после каждого абзаца + пересказ морали. Художественный нарратив мотивирует продолжать чтение.', skills: ['Художественный текст', 'Понимание', 'A2'] },
+      { desc: 'Меню кафе с конкретными вопросами. Прагматический текст с бытовой лексикой — реальная жизненная ситуация.', skills: ['Прагматический текст', 'Бытовая лексика', 'A2'] },
+      { desc: 'Кроссворд «Animals» с определениями на английском. Игровой формат делает изучение лексики запоминающимся.', skills: ['Кроссворд', 'Лексика животных', 'A2'] },
+      { desc: 'Текст о Лондоне с 8 пропущенными предлогами. Объяснение выбора каждого предлога in/on/at/to/from.', skills: ['Предлоги', 'Текст с пропусками', 'A2–B1'] },
+    ],
+    Listening: [
+      { desc: 'Диктант — самый простой и надёжный способ соединить аудирование с орфографией. Двойной повтор + разбор ошибок.', skills: ['Диктант', 'Орфография', 'A2'] },
+      { desc: 'Учительское задание на английском: понять что делать, к какому сроку и какие материалы. Учебная инструкция.', skills: ['Учебные инструкции', 'Понимание задания', 'A2–B1'] },
+      { desc: 'Прогноз погоды в Петербурге с конкретными вопросами. Знакомый город + знакомая тема = уверенное понимание.', skills: ['Погодная лексика', 'Знакомый контекст', 'A2'] },
+      { desc: 'Диалог о встрече после уроков: где, когда, что делать. Бытовой контекст + конкретные вопросы на понимание.', skills: ['Диалог планирования', 'Бытовая лексика', 'A2'] },
+      { desc: 'Рассказ о Halloween в Великобритании + три запомненных факта. Страноведение через аудирование.', skills: ['Страноведение', 'Запоминание фактов', 'A2–B1'] },
+      { desc: 'Шесть школьных объявлений по 2 вопроса каждое. Практичный формат с реальным школьным контекстом.', skills: ['Школьные объявления', 'Детальное понимание', 'A2–B1'] },
+    ],
+    Grammar: [
+      { desc: 'Present Simple для 5-го класса: простые слова, весёлые примеры + 5 упражнений с пропусками. Идеально для начинающих.', skills: ['Present Simple', 'Начальный уровень', 'A1–A2'] },
+      { desc: 'Игра: Алиса называет глагол → ученик ставит в Past Simple → очко при правильном ответе. 10 раундов с итогом.', skills: ['Past Simple', 'Игровой формат', 'A2'] },
+      { desc: 'Правило a/an с примерами и игрой на 8 вопросов. Первая грамматическая тема, с которой начинают изучение артиклей.', skills: ['Артикли a/an', 'Начальный уровень', 'A1–A2'] },
+      { desc: 'Неправильные глаголы через рифмы и ассоциации. Мнемотехника — лучший способ запомнить сложный материал.', skills: ['Неправильные глаголы', 'Мнемотехники', 'A2'] },
+      { desc: '6 предложений с типичными ошибками русских учеников при переводе. Прямая работа с интерференцией.', skills: ['Перевод', 'Типичные ошибки', 'A2–B1'] },
+      { desc: 'Who и What в Present Simple: объяснение + примеры + 8 ситуаций для самостоятельного составления вопросов.', skills: ['Специальные вопросы', 'Начальный уровень', 'A2'] },
+    ],
+    Vocabulary: [
+      { desc: '10 слов «Школьные принадлежности»: перевод + произношение + смешной пример + игра «Угадай по описанию».', skills: ['Школьная лексика', 'A1–A2', 'Игровой формат'] },
+      { desc: '«Снежный ком» на тему «Еда»: накапливающийся список слов. Классическая игра для тренировки памяти.', skills: ['Лексика еды', 'Память', 'A1–A2'] },
+      { desc: '8 пар антонимов внешности с примерами и финальным тестом на сопоставление. Структурированное изучение темы.', skills: ['Антонимы', 'Описание внешности', 'A2'] },
+      { desc: 'Дни недели, месяцы, порядковые числа через рифмовку + задание написать дату рождения. Базовый лексический минимум.', skills: ['Числительные', 'Дни и месяцы', 'A1–A2'] },
+      { desc: '10 животных с транскрипцией + загадки на английском. Произношение + лексика в одном активити.', skills: ['Животные', 'Произношение', 'A1–A2'] },
+      { desc: 'Цвета и прилагательные через предметы в комнате. Вопросы о реальном окружении делают обучение конкретным.', skills: ['Цвета', 'Прилагательные', 'A1–A2'] },
+    ],
+  },
+};
+
+
+let currentAI = null;
+let currentSkill = null;
+
+function openAI(id) {
+  currentAI = id;
+  const ai = DATA[id];
+  currentSkill = Object.keys(ai.skills)[0];
+
+  document.getElementById('home').classList.remove('active');
+  const page = document.getElementById('ai-page');
+  page.classList.add('active');
+  page.style.setProperty('--ai-color', ai.color);
+
+  document.getElementById('hero-icon').textContent = ai.icon;
+  document.getElementById('hero-icon').style.background = `${ai.color}22`;
+  document.getElementById('hero-icon').style.border = `1px solid ${ai.color}44`;
+  document.getElementById('hero-name').textContent = ai.name;
+  document.getElementById('hero-desc').textContent = ai.desc;
+
+  // Build skill buttons
+  const bar = document.getElementById('skill-bar');
+  bar.innerHTML = '';
+  Object.keys(ai.skills).forEach(skill => {
+    const btn = document.createElement('button');
+    btn.className = 'skill-btn' + (skill === currentSkill ? ' active' : '');
+    btn.style.setProperty('--ai-color', ai.color);
+    btn.innerHTML = `${SKILL_ICONS[skill]} ${skill}`;
+    btn.onclick = () => selectSkill(skill);
+    bar.appendChild(btn);
+  });
+
+  renderPrompts();
+  window.scrollTo(0, 0);
+}
+
+function selectSkill(skill) {
+  currentSkill = skill;
+  document.querySelectorAll('.skill-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderPrompts();
+}
+
+function renderPrompts() {
+  const ai = DATA[currentAI];
+  const prompts = ai.skills[currentSkill];
+  const meta = PROMPT_META[currentAI]?.[currentSkill] || [];
+  const section = document.getElementById('prompts-section');
+
+  section.innerHTML = `
+    <h2>${SKILL_ICONS[currentSkill]} ${currentSkill}</h2>
+    <p class="prompts-meta">${prompts.length} промптов · Копируйте и вставляйте в чат с ИИ</p>
+    <div class="prompts-grid">
+      ${prompts.map((p, i) => {
+        const m = meta[i] || {};
+        const skillBadges = (m.skills || []).map(s => `<span class="skill-badge">✦ ${s}</span>`).join('');
+        return `
+        <div class="prompt-card fade-in" style="animation-delay:${i * 0.06}s">
+          <div class="prompt-num">Промпт ${i + 1}</div>
+          <div class="prompt-goal">🎯 ${p.goal}</div>
+          ${m.desc ? `
+          <div class="prompt-description">
+            ${m.desc}
+            ${skillBadges ? `<div class="skills-badges">${skillBadges}</div>` : ''}
+          </div>` : ''}
+          <div class="prompt-text">
+            ${p.text}
+            <button class="copy-btn" onclick="copyPrompt(this, \`${p.text.replace(/`/g, '\\`')}\`)">Копировать</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function copyPrompt(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Скопировано';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Копировать';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function goHome() {
+  document.getElementById('ai-page').classList.remove('active');
+  document.getElementById('home').classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
